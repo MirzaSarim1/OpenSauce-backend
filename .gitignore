@@ -62,3 +62,4 @@ NESTJS_BACKEND_SPECIFICATIONS.md
 .env
 
 prisma/migrations/
+/generated/prisma

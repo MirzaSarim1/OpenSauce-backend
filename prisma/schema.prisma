@@ -1,0 +1,195 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// Enums
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum Cuisine {
+  ITALIAN
+  CHINESE
+  MEXICAN
+  INDIAN
+  JAPANESE
+  THAI
+  AMERICAN
+  FRENCH
+  MEDITERRANEAN
+  OTHER
+}
+
+enum TagType {
+  DIETARY
+  GENERIC
+}
+
+enum NotificationType {
+  FOLLOW
+  FAVORITE
+  REVIEW
+  NEW_RECIPE
+  SYSTEM
+}
+
+// Models
+model User {
+  id                      String   @id @default(cuid())
+  email                   String   @unique
+  password                String
+  name                    String
+  image                   String?
+  imagePublicId           String?
+  bio                     String?
+  role                    Role     @default(USER)
+  emailVerified           Boolean  @default(false)
+  verificationToken       String?
+  verificationTokenExpiry DateTime?
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  recipes      Recipe[]
+  reviews      Review[]
+  favorites    Favorite[]
+  followedBy   Follow[]  @relation("following")
+  following    Follow[]  @relation("followedBy")
+  notifications Notification[]
+
+  @@index([email])
+  @@index([createdAt])
+}
+
+model Recipe {
+  id              String   @id @default(cuid())
+  title           String
+  description     String
+  instructions    String
+  prepTime        Int
+  cookTime        Int
+  difficulty      Difficulty @default(MEDIUM)
+  image           String?
+  imagePublicId   String?
+  cuisine         Cuisine? @default(OTHER)
+  averageRating   Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  authorId        String
+
+  author      User @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+  reviews     Review[]
+  favorites   Favorite[]
+  tags        Tag[]
+  categories  Category[]
+
+  @@index([authorId])
+  @@index([title])
+}
+
+model Ingredient {
+  id    String @id @default(cuid())
+  name  String @unique
+
+  recipes RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id           String @id @default(cuid())
+  recipeId     String
+  ingredientId String
+  quantity     String
+  unit         String?
+
+  recipe     Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@index([recipeId])
+  @@index([ingredientId])
+}
+
+model Category {
+  id      String   @id @default(cuid())
+  name    String   @unique
+
+  recipes Recipe[]
+}
+
+model Tag {
+  id    String  @id @default(cuid())
+  name  String  @unique
+  type  TagType @default(GENERIC)
+
+  recipes Recipe[]
+}
+
+model Review {
+  id        String   @id @default(cuid())
+  rating    Int
+  comment   String?
+  userId    String
+  recipeId  String
+  createdAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, recipeId])
+  @@index([recipeId])
+  @@index([userId])
+}
+
+model Favorite {
+  userId    String
+  recipeId  String
+  assignedAt DateTime @default(now())
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  recipe Recipe @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, recipeId])
+  @@index([userId])
+}
+
+model Follow {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+
+  follower  User @relation("following", fields: [followerId], references: [id], onDelete: Cascade)
+  following User @relation("followedBy", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  data      Json?
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
