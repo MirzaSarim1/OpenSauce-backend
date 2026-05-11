@@ -13,9 +13,7 @@ async function bootstrap() {
   });
 
   app.useGlobalPipes(new ValidationPipe());
-
   app.useGlobalFilters(new HttpExceptionFilter());
-
   app.useGlobalInterceptors(new ResponseInterceptor());
 
   const port = process.env.PORT || 3001;
