@@ -1,7 +1,7 @@
-import { IsString, Length, IsUUID } from 'class-validator';
+import { IsString, Length } from 'class-validator';
 
 export class VerifyEmailDto {
-  @IsUUID()
+  @IsString()
   userId!: string;
 
   @IsString()
@@ -10,6 +10,6 @@ export class VerifyEmailDto {
 }
 
 export class ResendVerificationDto {
-  @IsUUID()
+  @IsString()
   userId!: string;
 }
