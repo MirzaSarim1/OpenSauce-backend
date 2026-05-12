@@ -19,7 +19,16 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     if (isPublic) {
       return true;
     }
-
     return super.canActivate(context);
+  }
+
+  handleRequest(err: any, user: any, info: any, context: any) {
+    if (err) {
+      throw err;
+    }
+    if (!user) {
+      throw new Error('Unauthorized');
+    }
+    return user;
   }
 }
