@@ -35,12 +35,10 @@ export class AuthService {
   async register(registerDto: RegisterDto) {
     const { email, password, confirmPassword, name } = registerDto;
 
-    // Validate passwords match
     if (password !== confirmPassword) {
       throw new BadRequestException('Passwords do not match');
     }
 
-    // Check if email already exists
     const existingUser = await this.prismaService.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -49,14 +47,11 @@ export class AuthService {
       throw new ConflictException('Email already registered');
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
 
-    // Generate OTP
     const otp = this.generateOTP();
     const otpExpiry = this.getOTPExpiry();
 
-    // Create user
     const user = await this.prismaService.user.create({
       data: {
         email: email.toLowerCase(),
@@ -72,7 +67,6 @@ export class AuthService {
       },
     });
 
-    // Send verification email
     await this.emailService.sendVerificationEmail(user.email, user.name, otp);
 
     return {
@@ -86,7 +80,6 @@ export class AuthService {
   async login(loginDto: LoginDto) {
     const { email, password } = loginDto;
 
-    // Find user
     const user = await this.prismaService.user.findUnique({
       where: { email: email.toLowerCase() },
     });
@@ -95,19 +88,16 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
 
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid email or password');
     }
 
-    // Check if email is verified
     if (!user.emailVerified) {
       throw new UnauthorizedException('Please verify your email first');
     }
 
-    // Generate JWT token
     const payload = {
       id: user.id,
       email: user.email,
@@ -125,50 +115,44 @@ export class AuthService {
   }
 
   async verifyEmail(verifyEmailDto: VerifyEmailDto) {
-    const { userId, otp } = verifyEmailDto;
+  const user = await this.prismaService.user.findUnique({
+    where: { id: verifyEmailDto.userId },
+  });
 
-    // Find user
-    const user = await this.prismaService.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-
-    // Check if already verified
-    if (user.emailVerified) {
-      throw new BadRequestException('Email already verified');
-    }
-
-    // Validate OTP
-    if (user.verificationToken !== otp) {
-      throw new BadRequestException('Invalid OTP');
-    }
-
-    // Check if OTP expired
-    if (!user.verificationTokenExpiry || new Date() > user.verificationTokenExpiry) {
-      throw new BadRequestException('OTP has expired');
-    }
-
-    // Mark email as verified
-    await this.prismaService.user.update({
-      where: { id: userId },
-      data: {
-        emailVerified: true,
-        verificationToken: null,
-        verificationTokenExpiry: null,
-      },
-    });
-
-    return {
-      success: true,
-      message: 'Email verified successfully',
-    };
+  if (!user) {
+    throw new NotFoundException('User not found');
   }
 
+  if (user.emailVerified) {
+    throw new BadRequestException('Email already verified');
+  }
+
+  if (user.verificationToken !== verifyEmailDto.otp) {
+    throw new BadRequestException('Invalid OTP');
+  }
+
+  if (!user.verificationTokenExpiry || new Date() > user.verificationTokenExpiry) {
+    throw new BadRequestException('OTP expired');
+  }
+
+  const updated = await this.prismaService.user.update({
+    where: { id: verifyEmailDto.userId },
+    data: {
+      emailVerified: true,
+      verificationToken: null,
+      verificationTokenExpiry: null,
+    },
+    select: {
+      id: true,
+      email: true,
+      emailVerified: true,
+    },
+  });
+
+  return updated;
+}
+
   async resendVerification(userId: string) {
-    // Find user
     const user = await this.prismaService.user.findUnique({
       where: { id: userId },
     });
@@ -177,16 +161,13 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    // Check if already verified
     if (user.emailVerified) {
       throw new BadRequestException('Email already verified');
     }
 
-    // Generate new OTP
     const otp = this.generateOTP();
     const otpExpiry = this.getOTPExpiry();
 
-    // Update user with new OTP
     await this.prismaService.user.update({
       where: { id: userId },
       data: {
