@@ -37,6 +37,7 @@ async function bootstrap() {
     .addTag('Favorites', 'Favorite endpoints')
     .addTag('Follows', 'Follow endpoints')
     .addTag('Notifications', 'Notification endpoints')
+    .addTag('Dashboard', 'Dashboard statistics endpoints')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
