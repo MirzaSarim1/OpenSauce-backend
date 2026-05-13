@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { PusherService } from '../common/services/pusher.service';
 
 @Injectable()
 export class FollowsService {
-    constructor(private prismaService: PrismaService) { }
+    constructor(
+        private prismaService: PrismaService,
+        private pusherService: PusherService,
+    ) { }
 
     async toggle(targetUserId: string, userId: string) {
         if (targetUserId === userId) {
@@ -41,7 +45,7 @@ export class FollowsService {
             },
         });
 
-        await this.prismaService.notification.create({
+        const notification = await this.prismaService.notification.create({
             data: {
                 userId: targetUserId,
                 type: 'FOLLOW',
@@ -52,6 +56,7 @@ export class FollowsService {
                 },
             },
         });
+        await this.pusherService.triggerNewNotification(targetUserId, notification);
 
         return {
             success: true,

@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { PusherService } from '../common/services/pusher.service';
 
 @Injectable()
 export class FavoritesService {
-    constructor(private prismaService: PrismaService) { }
+    constructor(
+        private prismaService: PrismaService,
+        private pusherService: PusherService,
+    ) { }
 
     async toggle(recipeId: string, userId: string) {
         const recipe = await this.prismaService.recipe.findUnique({
@@ -36,7 +40,7 @@ export class FavoritesService {
         });
 
         if (recipe.authorId !== userId) {
-            await this.prismaService.notification.create({
+            const notification = await this.prismaService.notification.create({
                 data: {
                     userId: recipe.authorId,
                     type: 'FAVORITE',
@@ -48,6 +52,7 @@ export class FavoritesService {
                     },
                 },
             });
+            await this.pusherService.triggerNewNotification(recipe.authorId, notification);
         }
 
         return {

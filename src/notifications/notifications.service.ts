@@ -1,9 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { PusherService } from '../common/services/pusher.service';
 
 @Injectable()
 export class NotificationsService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private pusherService: PusherService,
+  ) {}
 
   async findAll(userId: string, page: number = 1, limit: number = 10, read?: boolean) {
     const skip = (page - 1) * limit;
@@ -63,6 +67,8 @@ export class NotificationsService {
       data: { read: true },
     });
 
+    await this.pusherService.triggerNotificationRead(userId, notificationId);
+
     return {
       success: true,
       message: 'Notification marked as read',
@@ -74,6 +80,8 @@ export class NotificationsService {
       where: { userId, read: false },
       data: { read: true },
     });
+
+    await this.pusherService.triggerNotificationRead(userId, 'all');
 
     return {
       success: true,
@@ -97,6 +105,8 @@ export class NotificationsService {
     await this.prismaService.notification.delete({
       where: { id: notificationId },
     });
+
+    await this.pusherService.triggerNotificationDelete(userId, notificationId);
 
     return {
       success: true,
