@@ -5,12 +5,16 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { PrismaService } from '../common/prisma/prisma.service';
+import { PusherService } from '../common/services/pusher.service';
 import { CreateReviewDto } from './dto/create-review.dto';
 import { UpdateReviewDto } from './dto/update-review.dto';
 
 @Injectable()
 export class ReviewsService {
-  constructor(private prismaService: PrismaService) {}
+  constructor(
+    private prismaService: PrismaService,
+    private pusherService: PusherService,
+  ) {}
 
   async create(
     recipeId: string,
@@ -50,7 +54,7 @@ export class ReviewsService {
     await this.recalculateAverageRating(recipeId);
 
     if (recipe.authorId !== userId) {
-      await this.prismaService.notification.create({
+      const notification = await this.prismaService.notification.create({
         data: {
           userId: recipe.authorId,
           type: 'REVIEW',
@@ -64,6 +68,7 @@ export class ReviewsService {
           },
         },
       });
+      await this.pusherService.triggerNewNotification(recipe.authorId, notification);
     }
 
     return {
